@@ -1,0 +1,38 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int         @id @default(autoincrement())
+  deviceUid Int         @unique
+  userid    String?
+  name      String?
+  privilege Int         @default(0)
+  createdAt DateTime    @default(now())
+  attendance Attendance[]
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  timestamp DateTime
+  status    String?
+  type      Int?      // <--- must be here
+  state     Int?      // <--- must be here
+  ip        String?   // <--- must be here
+  rawData   Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, timestamp])
+}
+
+
