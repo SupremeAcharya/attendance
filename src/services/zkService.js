@@ -32,11 +32,31 @@ export async function getAttendance() {
       await connectToDevice();
       if (!zk) throw new Error("Device not connected");
     }
+    // const users = await zk.getUsers();
+    // console.log("Number of users : " , users.data.length);
+    // console.log(users.data);
+    const attendance = await zk.getAttendances();
+    return attendance.data || [];
+  } catch (err) {
+    console.error("❌ Error fetching attendance:", err.message);
+    zk = null; // reset connection for next retry
+    return [];
+  }
+}
+
+
+//get users for device
+export async function getUsers() {
+  try {
+    if (!zk) {
+      await connectToDevice();
+      if (!zk) throw new Error("Device not connected");
+    }
     const users = await zk.getUsers();
     console.log("Number of users : " , users.data.length);
     console.log(users.data);
-    const attendance = await zk.getAttendances();
-    return attendance.data || [];
+    // const attendance = await zk.getAttendances();
+    return users.data || [];
   } catch (err) {
     console.error("❌ Error fetching attendance:", err.message);
     zk = null; // reset connection for next retry
@@ -52,7 +72,8 @@ export async function createUser(uid, userid, name) {
     if (!zk) await connectToDevice();
     if (!zk) throw new Error("Device not connected");
 
-    await zk.setUser(uid, userid, name, "", 0, 0);
+    const result = await zk.setUser(uid, userid, name, "", 0, 0);
+    console.log(result);
     zk = null;
     return { success: true };
   } catch (err) {

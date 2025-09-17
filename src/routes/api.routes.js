@@ -4,7 +4,8 @@ import { fetchAttendance, addUser,removeUser } from "../controllers/attendance.c
 const router = express.Router();
 
 router.get("/attendance", fetchAttendance);
-router.post("/user", addUser);
-router.delete("/delete", removeUser);
+router.get("/user", fetchUser);
+router.post("/adduser", addUser);
+router.delete("/deleteuser", removeUser);
 
 export default router;
