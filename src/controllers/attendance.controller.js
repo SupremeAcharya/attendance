@@ -1,5 +1,5 @@
 import prisma from "../config/prisma.js";
-import { getAttendance, createUser, deleteUser, connectToDevice } from "../services/zkService.js";
+import { getAttendance, createUser, deleteUser, connectToDevice, getUsers } from "../services/zkService.js";
 
 // Auto-sync from device to DB
 
@@ -27,12 +27,12 @@ export async function syncAttendance() {
       }
 
       // Find or create user
-      let user = await prisma.user.findUnique({ where: { deviceUid } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: { deviceUid, name: null, userid: null },
-        });
-      }
+      // let user = await prisma.user.findUnique({ where: { deviceUid } });
+      // if (!user) {
+      //   user = await prisma.user.create({
+      //     data: { deviceUid, name: null, userid: null },
+      //   });
+      // }
 
       // Map type to status
       const status = log.type === 1 ? "IN" : log.type === 2 ? "OUT" : null;
@@ -61,6 +61,52 @@ export async function syncAttendance() {
 
   } catch (err) {
     console.error("❌ Sync error:", err.message);
+    return [];
+  }
+}
+
+export async function syncUsers() {
+  try {
+    let deviceUsers = await getUsers();
+
+    // Retry connection if no users fetched
+    if (!deviceUsers.length) {
+      console.log("⚠️ No users fetched, retrying connection...");
+      await connectToDevice();
+      deviceUsers = await getUsers();
+    }
+
+    console.log("Fetched users from device:", deviceUsers.length);
+
+    const usersData = [];
+
+    for (const user of deviceUsers) {
+      const deviceUid = parseInt(user.uid);
+
+      // Check if user already exists in DB
+      let existing = await prisma.user.findUnique({ where: { deviceUid } });
+      if (!existing) {
+        usersData.push({
+          deviceUid,
+          userid: user.userid || null,
+          name: user.name || null,
+        });
+      }
+    }
+
+    // Bulk insert new users
+    if (usersData.length) {
+      await prisma.user.createMany({
+        data: usersData,
+        skipDuplicates: true,
+      });
+    }
+
+    console.log(`✅ Synced ${usersData.length} new users to DB`);
+    return usersData;
+
+  } catch (err) {
+    console.error("❌ Error syncing users:", err.message);
     return [];
   }
 }
@@ -99,6 +145,50 @@ export async function fetchAttendance(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+
+// Fetch all users from database
+export async function fetchUsers(req, res) {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { id: "asc" },
+      include: {
+        attendance: {
+          orderBy: { timestamp: "desc" },
+          take: 5, // optional: last 5 attendance logs per user
+        },
+      },
+    });
+
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      deviceUid: user.deviceUid,
+      userid: user.userid,
+      name: user.name,
+      privilege: user.privilege,
+      createdAt: user.createdAt,
+      // lastAttendance: user.attendance.map(log => ({
+      //   id: log.id,
+      //   timestamp: log.timestamp,
+      //   status: log.status,
+      //   type: log.type,
+      //   state: log.state,
+      //   ip: log.ip,
+      // })),
+    }));
+
+    res.json({
+      message: "Fetched users from DB",
+      count: formattedUsers.length,
+      data: formattedUsers,
+    });
+
+  } catch (err) {
+    console.error("❌ Error fetching users:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
 
 // Add user (device + DB)
 export async function addUser(req, res) {

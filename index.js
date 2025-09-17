@@ -2,7 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import apiRoutes from "./src/routes/api.routes.js";
 import { connectToDevice} from "./src/services/zkService.js";
-import { syncAttendance } from "./src/controllers/attendance.controller.js";
+import { syncAttendance, syncUsers } from "./src/controllers/attendance.controller.js";
 // import { syncAttendance as syncController } from "./src/controllers/attendance.controller.js";
 import cors from "cors";
 
@@ -32,5 +32,6 @@ app.listen(PORT, async () => {
   // Auto-sync every 10 seconds
   setInterval(async () => {
     await syncAttendance();
+    await syncUsers();
   }, 10000);
 });

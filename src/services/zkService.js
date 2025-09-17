@@ -54,8 +54,7 @@ export async function getUsers() {
     }
     const users = await zk.getUsers();
     console.log("Number of users : " , users.data.length);
-    console.log(users.data);
-    // const attendance = await zk.getAttendances();
+    // console.log(users.data);
     return users.data || [];
   } catch (err) {
     console.error("❌ Error fetching attendance:", err.message);
